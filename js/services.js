@@ -244,16 +244,25 @@
   };
 
   /* ---------- TomTom (optional key) ---------- */
-  S.tomtomKey = () => { try { return localStorage.getItem("pp:tomtom") || ""; } catch (e) { return ""; } };
+  S.ownTomtomKey = () => { try { return localStorage.getItem("pp:tomtom") || ""; } catch (e) { return ""; } };
+  S.sharedTomtomKey = () => ((window.PUJO && PUJO.CONFIG && PUJO.CONFIG.TOMTOM_KEY) || "").trim();
+  S.tomtomKey = () => S.ownTomtomKey() || S.sharedTomtomKey();
+  S.usingSharedKey = () => !S.ownTomtomKey() && !!S.sharedTomtomKey();
   S.setTomtomKey = (v) => { try { v ? localStorage.setItem("pp:tomtom", v) : localStorage.removeItem("pp:tomtom"); } catch (e) {} };
   S.tomtomFlowUrl = (key) => `https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${encodeURIComponent(key)}&tileSize=256`;
   S.incidents = async function (key) {
+    // 5-minute per-device cache keeps a shared key well inside the free daily quota
+    const ck = "inc:" + key.slice(-6);
+    const hit = cacheGet(ck, 5 * 60e3, true);
+    if (hit) return hit;
     const fields = "{incidents{type,geometry{type,coordinates},properties{iconCategory,magnitudeOfDelay,events{description,code},startTime,endTime,from,to,length,delay,roadNumbers}}}";
     const url = "https://api.tomtom.com/traffic/services/5/incidentDetails?" + new URLSearchParams({
       key, bbox: "88.22,22.40,88.56,22.72", fields, language: "en-GB", timeValidityFilter: "present"
     });
     const d = await fetchJSON(url, {}, 15000);
-    return d.incidents || [];
+    const out = d.incidents || [];
+    cacheSet(ck, out, true);
+    return out;
   };
   S.INCIDENT_CAT = { 0: "Unknown", 1: "Accident", 2: "Fog", 3: "Dangerous conditions", 4: "Rain", 5: "Ice", 6: "Jam", 7: "Lane closed", 8: "Road closed", 9: "Road works", 10: "Wind", 11: "Flooding", 14: "Broken-down vehicle" };
 

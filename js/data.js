@@ -10,6 +10,11 @@
 
 window.PUJO = {};
 
+/* Shared TomTom key: when set, every visitor gets live traffic flow + incidents.
+   Restrict it to this site's domain in the TomTom dashboard. Free plan: 50,000 tile
+   + 2,500 non-tile requests/day; requests over the cap are refused, not billed. */
+PUJO.CONFIG = { TOMTOM_KEY: "N7laBtFJwxDkc2ENUI6uReqJKWc9guxb" };
+
 PUJO.CENTER = [22.5626, 88.3630];
 PUJO.BOUNDS = [[22.40, 88.22], [22.72, 88.56]];
 

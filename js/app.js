@@ -710,10 +710,11 @@
     $("#pane-traffic").innerHTML = `<h2 class="sec">Roads & Weather<span class="bn">পথের খবর</span></h2>
       ${wx}
       <h3 class="sub">Live traffic & closures</h3>
-      ${key ? `<div id="inc-list">${loader("Fetching live incidents from TomTom…")}</div>
-          <div class="btn-row"><button class="btn" id="tt-layer">${trafficTiles && map.hasLayer(trafficTiles) ? "Hide" : "Show"} live flow on map</button><button class="btn" id="tt-clear">Remove key</button></div>`
-        : `<div class="note">Add a free <a href="https://developer.tomtom.com/" target="_blank" rel="noopener">TomTom API key</a> to see <b>live traffic flow and real-time road closures</b> on the map. It stays on this device only.</div>
-           <div class="field"><input id="tt-key" placeholder="Paste TomTom API key" autocomplete="off" /><button class="btn primary" id="tt-save">Save</button></div>`}
+      ${state.trafficDown ? `<div class="note warn">⚠️ ${esc(state.trafficDown)} Use Google's live traffic below meanwhile.</div>` : ""}
+      ${key && !state.trafficDown ? `<div id="inc-list">${loader("Fetching live incidents from TomTom…")}</div>
+          <div class="btn-row"><button class="btn" id="tt-layer">${trafficTiles && map.hasLayer(trafficTiles) ? "Hide" : "Show"} live flow on map</button>${SVC.ownTomtomKey() ? `<button class="btn" id="tt-clear">Remove my key</button>` : ""}</div>` : ""}
+      ${!key ? `<div class="note">Add a free <a href="https://developer.tomtom.com/" target="_blank" rel="noopener">TomTom API key</a> to see <b>live traffic flow and real-time road closures</b> on the map. It stays on this device only.</div>` : ""}
+      ${!SVC.ownTomtomKey() && (!key || state.trafficDown) ? `<div class="field"><input id="tt-key" placeholder="Paste your own TomTom API key" autocomplete="off" /><button class="btn primary" id="tt-save">Save</button></div>` : ""}
       <div class="btn-row">
         <a class="btn" target="_blank" rel="noopener" href="${PUJO.LINKS.gmapsTraffic}">🗺️ Google live traffic ↗</a>
         <a class="btn" target="_blank" rel="noopener" href="${PUJO.LINKS.traffic}">🚦 Kolkata Traffic Police ↗</a>
@@ -727,20 +728,48 @@
       <h3 class="sub">Metro</h3>
       <div class="note">🚇 Kolkata Metro usually runs extended late-night services from Saptami to Navami — check the <a href="${PUJO.LINKS.metro}" target="_blank" rel="noopener">official Metro Railway site</a> for 2026 timings. Turn on "Metro stations" in map layers to see every station.</div>`;
     $$("[data-adv]").forEach((b) => (b.onclick = () => { const a = PUJO.ADVISORIES[+b.dataset.adv]; map.flyTo(a.ll, 15); setSheet("peek"); }));
-    if (key) {
+    if (key && !state.trafficDown) {
       loadIncidents(key);
       $("#tt-layer").onclick = () => { toggleTraffic(!(trafficTiles && map.hasLayer(trafficTiles))); renderTraffic(); };
-      $("#tt-clear").onclick = () => { SVC.setTomtomKey(""); toggleTraffic(false); incidentLayer.clearLayers(); renderTraffic(); };
-    } else {
-      $("#tt-save").onclick = () => { const v = $("#tt-key").value.trim(); if (!v) return; SVC.setTomtomKey(v); toggleTraffic(true); renderTraffic(); };
     }
+    const clr = $("#tt-clear"); if (clr) clr.onclick = () => { SVC.setTomtomKey(""); resetTraffic(); renderTraffic(); };
+    const sv = $("#tt-save"); if (sv) sv.onclick = () => { const v = $("#tt-key").value.trim(); if (!v) return; SVC.setTomtomKey(v); resetTraffic(); toggleTraffic(true); renderTraffic(); };
     if (!w) loadWeather(anchor());
+  }
+  function resetTraffic() {
+    if (trafficTiles) map.removeLayer(trafficTiles);
+    trafficTiles = null; state.trafficDown = null; clearTimeout(incTimer); incidentLayer.clearLayers();
+    $('[data-layer="traffic"]').checked = false;
+  }
+  function trafficFailed(msg) {
+    if (state.trafficDown) return;
+    state.trafficDown = msg;
+    if (trafficTiles) map.removeLayer(trafficTiles);
+    clearTimeout(incTimer); incidentLayer.clearLayers();
+    $('[data-layer="traffic"]').checked = false;
+    if (state.tab === "traffic") renderTraffic();
+  }
+  function failMsg(err) {
+    const m = String(err && err.message || err);
+    if (/40[13]/.test(m)) return SVC.usingSharedKey() ? "Live traffic is paused — today's free TomTom quota may be used up." : "TomTom rejected this key. Check it's copied fully and has Traffic API access.";
+    if (/429/.test(m)) return "Live traffic is busy right now (rate-limited). It'll come back shortly.";
+    return "Couldn't reach TomTom right now.";
   }
   function toggleTraffic(on) {
     const key = SVC.tomtomKey();
     if (on && !key) { toast("Add a TomTom key in the Traffic tab first."); switchTab("traffic"); setSheet("half"); $('[data-layer="traffic"]').checked = false; return; }
-    if (on) { trafficTiles = trafficTiles || L.tileLayer(SVC.tomtomFlowUrl(key), { opacity: 0.85, zIndex: 5, maxZoom: 19 }); trafficTiles.addTo(map); incidentLayer.addTo(map); }
-    else { if (trafficTiles) map.removeLayer(trafficTiles); }
+    if (on && state.trafficDown) { toast(state.trafficDown); $('[data-layer="traffic"]').checked = false; return; }
+    if (on) {
+      if (!trafficTiles) {
+        let ok = 0, bad = 0;
+        // maxNativeZoom 16: deeper zooms reuse z16 tiles, saving quota on a shared key
+        trafficTiles = L.tileLayer(SVC.tomtomFlowUrl(key), { opacity: 0.85, zIndex: 5, maxZoom: 19, maxNativeZoom: 16, minZoom: 11, updateWhenIdle: true, keepBuffer: 1, className: "traffic-tiles" });
+        trafficTiles.on("tileload", () => ok++);
+        trafficTiles.on("tileerror", () => { if (++bad >= 4 && ok === 0) fetch(SVC.tomtomFlowUrl(key).replace("{z}/{x}/{y}", "12/3002/1798")).then((r) => trafficFailed(failMsg("HTTP " + r.status))).catch(() => trafficFailed(failMsg(""))); });
+      }
+      trafficTiles.addTo(map); incidentLayer.addTo(map);
+      if (!incTimer) loadIncidents(key);
+    } else if (trafficTiles) map.removeLayer(trafficTiles);
     $('[data-layer="traffic"]').checked = on;
   }
   async function loadIncidents(key) {
@@ -764,12 +793,13 @@
         const closures = items.filter((i) => i.iconCategory === 8 || i.iconCategory === 7).length;
         box.innerHTML = `<div class="stats"><div class="stat"><b>${items.length}</b><span>incidents</span></div><div class="stat"><b>${closures}</b><span>closures</span></div><div class="stat"><b>${items.filter((i) => i.iconCategory === 6).length}</b><span>jams</span></div></div>
           <div class="cards">${items.slice(0, 12).map((it) => `<div class="card"><div class="badge-num" style="background:${it.iconCategory === 8 ? "#111" : "#d7262b"}">${it.iconCategory === 8 ? "⛔" : "⚠️"}</div><div class="body"><div class="t">${esc(SVC.INCIDENT_CAT[it.iconCategory] || "Incident")}${it.roadNumbers && it.roadNumbers.length ? " · " + esc(it.roadNumbers.join(", ")) : ""}</div><div class="m">${esc(it.from || "")} → ${esc(it.to || "")}</div></div>${it.delay ? `<div class="r"><b>+${SVC.fmtDur(it.delay)}</b>delay</div>` : ""}</div>`).join("") || '<div class="empty">No incidents reported right now 🎉</div>'}</div>
-          <p class="muted" style="font-size:11px">Live from TomTom · refreshes every 3 min · updated ${new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}</p>`;
+          <p class="muted" style="font-size:11px">Live from TomTom · refreshes every 5 min · updated ${new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}</p>`;
       }
     } catch (e) {
-      if (box && document.body.contains(box)) box.innerHTML = `<div class="note warn">TomTom request failed (${esc(e.message)}). Check that the key is valid and has Traffic API access.</div>`;
+      if (/40[13]|429/.test(e.message)) { incTimer = null; return trafficFailed(failMsg(e)); }
+      if (box && document.body.contains(box)) box.innerHTML = `<div class="note warn">${esc(failMsg(e))}</div>`;
     }
-    incTimer = setTimeout(() => { if (state.tab === "traffic" || (trafficTiles && map.hasLayer(trafficTiles))) loadIncidents(key); }, 180000);
+    incTimer = setTimeout(() => { incTimer = null; if (!document.hidden && (state.tab === "traffic" || (trafficTiles && map.hasLayer(trafficTiles)))) loadIncidents(key); }, 300000);
   }
 
   /* ================= SOS ================= */
@@ -868,7 +898,7 @@
   renderExplore();
   loadWeather();
   startGeo();
-  if (SVC.tomtomKey()) { /* key present: keep flow off until asked, but incidents load on Traffic tab */ }
+  if (SVC.tomtomKey()) toggleTraffic(true); // live traffic on by default whenever a key (shared or own) exists
   setTimeout(() => { $("#splash").classList.add("gone"); burst(36); handleHash(); }, 2700);
   $("#splash").addEventListener("click", () => $("#splash").classList.add("gone"));
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
