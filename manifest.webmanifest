@@ -1,0 +1,10 @@
+{
+  "name": "Pujo Path — Kolkata Durga Puja 2026",
+  "short_name": "Pujo Path",
+  "description": "Live pandal map, nearest-puja directions, circuits, food, traffic and SOS for Kolkata Durga Puja 2026.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#7a0f12",
+  "theme_color": "#7a0f12",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

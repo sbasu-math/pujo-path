@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pujo Path — Kolkata 2026</title>
+  <meta name="description" content="Live Durga Puja 2026 guide for Kolkata: pandal map, nearest-puja directions, circuits, food stops, traffic and emergency help." />
+  <meta name="theme-color" content="#7a0f12" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla&family=Hind+Siliguri:wght@400;500;600;700&family=Yeseva+One&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ===== Splash: Chokkhu Daan (painting of the eyes) ===== -->
+  <div id="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <svg class="trinayan" viewBox="0 0 240 120" aria-hidden="true">
+        <defs>
+          <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#f6d27a"/><stop offset="1" stop-color="#c8891f"/></linearGradient>
+        </defs>
+        <!-- third eye -->
+        <path class="eye3" d="M120 8 C128 20 128 34 120 46 C112 34 112 20 120 8Z" fill="#d7262b" stroke="url(#gold)" stroke-width="2"/>
+        <!-- left eye -->
+        <path class="lid" d="M18 84 Q62 46 106 80 Q62 98 18 84Z" fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
+        <circle class="iris" cx="68" cy="78" r="11" fill="#1a0b0b"/>
+        <!-- right eye -->
+        <path class="lid" d="M222 84 Q178 46 134 80 Q178 98 222 84Z" fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
+        <circle class="iris" cx="172" cy="78" r="11" fill="#1a0b0b"/>
+        <path class="brow" d="M20 62 Q62 30 108 60" fill="none" stroke="#1a0b0b" stroke-width="3" stroke-linecap="round"/>
+        <path class="brow" d="M220 62 Q178 30 132 60" fill="none" stroke="#1a0b0b" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h1 class="splash-title"><span class="bn">পুজো পথ</span><span class="en">Pujo Path · Kolkata 2026</span></h1>
+      <p class="splash-sub">শুভ শারদীয়া</p>
+      <div class="kash" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+
+  <div id="petals" aria-hidden="true"></div>
+
+  <!-- ===== Top bar ===== -->
+  <header id="topbar">
+    <a class="brand" href="#" aria-label="Pujo Path home">
+      <img src="assets/icon.svg" alt="" width="34" height="34" />
+      <span><b class="bn">পুজো পথ</b><small>Kolkata 2026</small></span>
+    </a>
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.7 4.7-1.4 1.4-4.7-4.7A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/></svg>
+      <input id="search" type="search" placeholder="Search pandal, area or place…" autocomplete="off" aria-label="Search" />
+      <div id="search-results" role="listbox"></div>
+    </div>
+    <div class="top-actions">
+      <button id="btn-dhak" class="icon-btn" title="Dhak beats" aria-label="Toggle dhak sound" aria-pressed="false">🥁</button>
+      <button id="btn-theme" class="icon-btn" title="Light / dark" aria-label="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <!-- ===== Day ribbon ===== -->
+  <div id="ribbon">
+    <div id="day-chip"></div>
+    <div id="weather-chip" title="Live weather · Open-Meteo">…</div>
+    <div id="loc-chip" class="muted">📍 Locating…</div>
+  </div>
+
+  <!-- ===== Map ===== -->
+  <main id="map" aria-label="Map of Durga Puja pandals in Kolkata"></main>
+
+  <div id="fabs">
+    <button id="fab-locate" class="fab" title="My location" aria-label="Centre on my location">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm9 3h-2.07A7 7 0 0 0 13 5.07V3h-2v2.07A7 7 0 0 0 5.07 11H3v2h2.07A7 7 0 0 0 11 18.93V21h2v-2.07A7 7 0 0 0 18.93 13H21z"/></svg>
+    </button>
+    <button id="fab-nearest" class="fab fab-gold" title="Nearest puja" aria-label="Take me to the nearest puja">
+      <span>🪔</span><em>Nearest</em>
+    </button>
+    <button id="fab-layers" class="fab" title="Layers" aria-label="Map layers">
+      <svg viewBox="0 0 24 24"><path d="M12 2 1 8l11 6 11-6zm0 14.2L3.2 11.4 1 12.6 12 18.6l11-6-2.2-1.2z"/></svg>
+    </button>
+  </div>
+  <div id="layers-menu" class="pop" hidden>
+    <label><input type="checkbox" data-layer="pujas" checked /> Pandals</label>
+    <label><input type="checkbox" data-layer="advisories" checked /> Traffic advisory zones</label>
+    <label><input type="checkbox" data-layer="metro" /> Metro stations</label>
+    <label><input type="checkbox" data-layer="traffic" /> Live traffic (TomTom key)</label>
+    <label><input type="checkbox" data-layer="heat" /> Crowd glow (estimate)</label>
+  </div>
+
+  <button id="sos" aria-label="Emergency help">SOS</button>
+
+  <!-- ===== Bottom sheet / side panel ===== -->
+  <section id="sheet" data-state="peek" aria-label="Guide panel">
+    <div class="grip" aria-hidden="true"><span></span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="explore" class="active"><i>🛕</i>Explore</button>
+      <button role="tab" data-tab="nearby"><i>🧭</i>Nearby</button>
+      <button role="tab" data-tab="circuits"><i>🗺️</i>Circuits</button>
+      <button role="tab" data-tab="food"><i>🍛</i>Food</button>
+      <button role="tab" data-tab="traffic"><i>🚦</i>Traffic</button>
+      <button role="tab" data-tab="sos"><i>🛟</i>Help</button>
+    </nav>
+    <div class="alpona-rule" aria-hidden="true"></div>
+    <div id="panel-body">
+      <div class="tab-pane active" id="pane-explore"></div>
+      <div class="tab-pane" id="pane-nearby"></div>
+      <div class="tab-pane" id="pane-circuits"></div>
+      <div class="tab-pane" id="pane-food"></div>
+      <div class="tab-pane" id="pane-traffic"></div>
+      <div class="tab-pane" id="pane-sos"></div>
+      <div class="tab-pane" id="pane-detail"></div>
+      <div class="tab-pane" id="pane-route"></div>
+    </div>
+  </section>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
