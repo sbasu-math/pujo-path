@@ -18,11 +18,11 @@ PUJO.CONFIG = { TOMTOM_KEY: "N7laBtFJwxDkc2ENUI6uReqJKWc9guxb" };
 PUJO.CENTER = [22.5626, 88.3630];
 PUJO.BOUNDS = [[22.40, 88.22], [22.72, 88.56]];
 
-/* Durga Puja 2026 — Kolkata panjika (Drik Panchang, Kolkata) */
+/* Durga Puja 2026 — Kolkata panjika. Saptami spans two days (17–18 Oct); `to` = last day of a tithi. */
 PUJO.DAYS = [
   { key: "mahalaya", date: "2026-10-10", en: "Mahalaya", bn: "মহালয়া", rites: "Devi-paksha begins · Chandipath at dawn" },
-  { key: "shashthi", date: "2026-10-17", en: "Maha Shashthi", bn: "মহাষষ্ঠী", rites: "Bodhon, Amantran & Adhibas — the Goddess is unveiled" },
-  { key: "saptami", date: "2026-10-18", en: "Maha Saptami", bn: "মহাসপ্তমী", rites: "Nabapatrika (Kola Bou) snan at dawn · Pran Pratishtha" },
+  { key: "shashthi", date: "2026-10-16", en: "Maha Shashthi", bn: "মহাষষ্ঠী", rites: "Bodhon, Amantran & Adhibas — the Goddess is unveiled" },
+  { key: "saptami", date: "2026-10-17", to: "2026-10-18", en: "Maha Saptami", bn: "মহাসপ্তমী", rites: "Nabapatrika (Kola Bou) snan at dawn · Pran Pratishtha", rites2: "Saptami continues — the tithi spans two days this year" },
   { key: "ashtami", date: "2026-10-19", en: "Maha Ashtami", bn: "মহাঅষ্টমী", rites: "Pushpanjali · Kumari Puja (Belur Math) · Sandhi Puja" },
   { key: "navami", date: "2026-10-20", en: "Maha Navami", bn: "মহানবমী", rites: "Maha Aarti · Bhog · Dhunuchi naach" },
   { key: "dashami", date: "2026-10-21", en: "Bijoya Dashami", bn: "বিজয়া দশমী", rites: "Darpan Bisarjan · Sindoor Khela · Immersion" }

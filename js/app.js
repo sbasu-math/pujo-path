@@ -212,10 +212,13 @@
   function pujaDay() {
     const now = SVC.ist(), iso = SVC.isoDate(now);
     const days = PUJO.DAYS.filter((d) => d.key !== "mahalaya");
-    const idx = days.findIndex((d) => d.date === iso);
+    const idx = days.findIndex((d) => SVC.onDay(d, iso));
     const first = new Date(days[0].date + "T00:00:00"), today = new Date(iso + "T00:00:00");
     const diff = Math.round((first - today) / 864e5);
-    return { now, iso, days, idx, before: idx < 0 && diff > 0 ? diff : 0, after: idx < 0 && diff <= 0 };
+    const tmr = new Date(today.getTime() + 864e5 + 3600e3), tIso = SVC.isoDate(tmr);
+    const tomorrow = days.find((d) => SVC.onDay(d, tIso)) || null;
+    const second = idx >= 0 && days[idx].to && iso !== days[idx].date; // 2nd day of a two-day tithi
+    return { now, iso, days, idx, tomorrow, second, before: idx < 0 && diff > 0 ? diff : 0, after: idx < 0 && diff <= 0 };
   }
   function renderRibbon() {
     const d = pujaDay();
@@ -362,12 +365,16 @@
     const visitedN = state.visited.size, total = PUJAS.length;
     let hero;
     if (d.idx >= 0) {
-      const t = d.days[d.idx], nx = d.days[d.idx + 1];
-      hero = `<div class="hero"><div class="count">Today · ${t.en}</div><h3>${t.bn}</h3><p>${esc(t.rites)}</p>${nx ? `<p style="margin-top:8px;opacity:.8">Tomorrow: <b>${nx.en}</b> — ${esc(nx.rites)}</p>` : `<p style="margin-top:8px">আসছে বছর আবার হবে 🙏</p>`}</div>`;
+      const t = d.days[d.idx], nx = d.tomorrow;
+      const rites = d.second && t.rites2 ? t.rites2 : t.rites;
+      const nxLine = !nx ? `<p style="margin-top:8px">আসছে বছর আবার হবে 🙏</p>`
+        : nx === t ? (() => { const after = d.days[d.idx + 1]; return `<p style="margin-top:8px;opacity:.8">Tomorrow: <b>${nx.en}</b> again — the tithi spans two days this year.${after ? ` ${after.en} follows on ${new Date(after.date + "T12:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}.` : ""}</p>`; })()
+        : `<p style="margin-top:8px;opacity:.8">Tomorrow: <b>${nx.en}</b> — ${esc(nx.rites)}</p>`;
+      hero = `<div class="hero"><div class="count">Today · ${t.en}${t.to ? (d.second ? " (day 2)" : " (day 1)") : ""}</div><h3>${t.bn}</h3><p>${esc(rites)}</p>${nxLine}</div>`;
     } else if (d.before) hero = `<div class="hero"><div class="count">Countdown</div><h3>${d.before} দিন বাকি</h3><p>Maha Shashthi on ${new Date(d.days[0].date + "T12:00:00").toDateString()}</p></div>`;
     else hero = `<div class="hero"><div class="count">Shubho Bijoya</div><h3>আসছে বছর আবার হবে</h3><p>Pujo 2026 is over — the map stays up for next year's planning.</p></div>`;
 
-    const days = d.days.slice(0, 5).map((x, i) => `<div class="day ${i === d.idx ? "today" : d.idx > i || d.after ? "past" : ""}"><b>${x.bn.replace("মহা", "")}</b>${+x.date.slice(8)} Oct</div>`).join("");
+    const days = d.days.slice(0, 5).map((x, i) => `<div class="day ${i === d.idx ? "today" : d.idx > i || d.after ? "past" : ""}"><b>${x.bn.replace("মহা", "")}</b>${+x.date.slice(8)}${x.to ? "–" + +x.to.slice(8) : ""} Oct</div>`).join("");
     const zones = [["all", "All"]].concat(Object.entries(PUJO.ZONES).map(([k, z]) => [k, z.en.split(" ")[0]]));
     const types = [["all", "All"], ["theme", "Theme"], ["traditional", "Sabeki"], ["bonedi", "Bonedi"]];
 

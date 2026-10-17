@@ -270,6 +270,7 @@
      Based on the well-known Kolkata pattern: crowds swell after sunset,
      peak 8 pm–1 am, stay high till ~3 am on Saptami–Navami, and are lowest
      between 6 am and noon. Scaled by pandal tier and puja day. */
+  S.onDay = (d, iso) => iso >= d.date && iso <= (d.to || d.date);
   S.ist = (d = new Date()) => new Date(d.getTime() + (330 + d.getTimezoneOffset()) * 60000);
   S.crowd = function (tier, date = new Date()) {
     date = S.ist(date);
@@ -278,7 +279,7 @@
     const i = Math.floor(h) % 24, f = h - Math.floor(h);
     let v = curve[i] * (1 - f) + curve[(i + 1) % 24] * f;
     const iso = isoDate(date);
-    const day = (PUJO.DAYS.find((d) => d.date === iso) || {}).key;
+    const day = (PUJO.DAYS.find((d) => S.onDay(d, iso)) || {}).key;
     const dayMul = { shashthi: 0.75, saptami: 1, ashtami: 1.1, navami: 1.05, dashami: 0.6 }[day] || 0.45;
     v = v * dayMul * (0.55 + tier * 0.17);
     return Math.max(0, Math.min(1, v));
